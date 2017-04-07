@@ -1,3 +1,5 @@
+# Price cross SMA
+
 input price = close;
 input malength = 20;
 input averageType = AverageType.SIMPLE;
