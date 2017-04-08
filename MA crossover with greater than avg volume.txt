@@ -212,9 +212,9 @@ fastma.SetDefaultColor(Color.YELLOW);
 plot slowma = MovingAverage(averageType, price, slow);
 slowma.SetDefaultColor(Color.WHITE);
 
-####### volume
+####### volume, 1 day is 96 15 min periods, 10 days about 1000
 
-input length = 2000;
+input length = 1000;
 
 def Vol = volume;
 def VolAvg = Average(volume, length);
