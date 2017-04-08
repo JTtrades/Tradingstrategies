@@ -1,0 +1,145 @@
+input price = close;
+input malength = 20;
+input averageType = AverageType.SIMPLE;
+plot length = MovingAverage(averageType, price, malength);
+length.SetDefaultColor(Color.yellow);
+
+################### Order Size ################
+def ordersize = 
+    if (GetSymbol() ==  "/ES") then 1
+    else if (GetSymbol() ==  "/NQ") then 1
+    else if (GetSymbol() ==  "SPY") then 100
+    else if (GetSymbol() ==  "QQQ") then 165
+    else 0;
+
+################ Trading Hours #################
+input marketOpenBuffer = 15;
+input marketCloseBuffer = 30;
+def   min_until_close = 
+    (RegularTradingEnd(GetYYYYMMDD()) - GetTime()) / AggregationPeriod.MIN;
+AddLabel(yes, "Minutes until close (mins): " + min_until_close);
+
+def   min_from_open =
+    (GetTime() - RegularTradingStart(GetYYYYMMDD())) / AggregationPeriod.MIN;
+AddLabel(yes, "Mintues since the open:  " + min_from_open);
+
+###################################################
+################## Enter positions ################
+###################################################
+
+##################### Long entry ##################  
+AddOrder(OrderType.BUY_TO_OPEN, price crosses above length and
+ min_until_close > marketCloseBuffer and
+ min_from_open > marketOpenBuffer, tradeSize = ordersize, tickcolor = color.green, arrowcolor = color.green, name = "Long, Buy to open");
+
+##################### Short entry #################
+AddOrder(OrderType.SELL_TO_OPEN, price crosses below length  and
+ min_until_close > marketCloseBuffer and
+ min_from_open > marketOpenBuffer, tradeSize = ordersize, tickcolor = color.red, arrowcolor = color.red, name = "Short, sell to open");
+
+###################################################
+################ Exits, profit targets ############
+###################################################
+
+################# Long profit target ##############
+input longtarget = {default percent, value, tick};
+input targetlong = 0.75;
+def entryPrice = EntryPrice();
+def multlongprofit;
+switch (longtarget) {
+case percent:
+    multlongprofit = entryPrice / 100;
+case value:
+    multlongprofit = 1;
+case tick:
+    multlongprofit = TickSize();
+}
+def targetPrice = entryPrice + targetlong * multlongprofit;
+
+AddOrder(OrderType.SELL_TO_CLOSE, high >= targetPrice, tickcolor = GetColor(6), arrowcolor = color.red, name = "target long");
+
+################### Short profit target ##########
+input Shorttarget = {default percent, value, tick};
+input targetshort = 0.75;
+def buytoprofitentryPrice = EntryPrice();
+def multbuytarget ;
+switch (Shorttarget ) {
+case percent:
+    multbuytarget  = entryPrice / 100;
+case value:
+    multbuytarget  = 1;
+case tick:
+    multbuytarget  = TickSize();
+}
+def buytoprofittargetPrice = entryPrice - targetshort * multbuytarget ;
+
+AddOrder(OrderType.BUY_TO_CLOSE, low <= buytoprofittargetPrice, tickcolor = color.green, arrowcolor = color.green, name = "short target");
+
+
+
+# Reminder to try and set targets to be dynamic.  Possibly ATR, APR, etc.
+
+#input AVGTR = ATR;
+# def targetlong = price + AvgTR;
+# def targetshort = price - AvgTR;
+
+# AddOrder(OrderType.SELL_TO_CLOSE, 
+# targetlong, 
+# tradeSize = ordersize, 
+# tickcolor = color.red, 
+# arrowcolor = color.red, 
+# name = "Long, sell target");
+
+# AddOrder(OrderType.BUY_TO_CLOSE, 
+# targetshort, 
+# tradeSize = ordersize, 
+# tickcolor = color.green, 
+# arrowcolor = color.green, 
+# name = "Long, sell target");
+
+#################################################
+#################### Exit, stops ################
+#################################################
+
+################## Long sell stop ###############
+input longstop = {default percent, value, tick};
+input stoplong = 0.75;
+def multsellstop;
+switch (longstop) {
+case percent:
+    multsellstop = entryPrice / 100;
+case value:
+    multsellstop = 1;
+case tick:
+    multsellstop = TickSize();
+}
+def stopPrice = entryPrice - stoplong * multsellstop;
+
+AddOrder(OrderType.SELL_TO_CLOSE, low <= stopPrice, tickcolor = color.red, arrowcolor = color.red, name = "Long, sell stop");
+
+
+################# Short buy stop #################
+input shortstop = {default percent, value, tick};
+input stopshort = 0.75;
+def multbuystop;
+switch (shortstop) {
+case percent:
+    multbuystop = entryPrice / 100;
+case value:
+    multbuystop = 1;
+case tick:
+    multbuystop = TickSize();
+}
+def buystopPrice = entryPrice + stopshort * multbuystop;
+
+AddOrder(OrderType.BUY_TO_CLOSE, high >= buystopPrice, tickcolor = color.green, arrowcolor = color.green, name = "short buy stop");
+
+#################################################
+############# Exit, Market close ################
+#################################################
+
+############# Long, sell at market close ########
+AddOrder(OrderType.SELL_TO_CLOSE, min_until_close <= 0, price = close,tickcolor = color.red, arrowcolor = color.red, name = "Sell/stop at Market Close");
+
+####$######## Short, buy at market close ########
+AddOrder(OrderType.BUY_TO_CLOSE, min_until_close <= 0, price = close,tickcolor = color.green, arrowcolor = color.green, name = "Buy/stop at Market Close");
